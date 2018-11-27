@@ -1,0 +1,2 @@
+include versioneer.py
+include opendap_protocol/_version.py
