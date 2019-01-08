@@ -476,7 +476,7 @@ def parse_slice_constraint(constraint):
 
     :param constraint: A complete constraint string as received through DAP
                        request.
-    :returns: A tuple of slices the can be used for accessing a subdomain of a
+    :returns: A tuple of slices that can be used for accessing a subdomain of a
               dataset.
     """
     slice_split = re.split(SLICE_CONSTRAINT_RE, constraint)
@@ -497,7 +497,7 @@ def parse_slice(token):
         return int(token)
     except ValueError:
         if token == ':':
-            return ellipsis
+            return ...
         elif ':' in token:
             rng = [int(s) for s in token.split(':')]
             # The DAP protocol uses slicing including the last index.
@@ -507,7 +507,7 @@ def parse_slice(token):
 
 
 def meets_constraint(constraint_expr, data_path):
-    """Parse the constraint expression anc check if data_path meets the
+    """Parse the constraint expression and check if data_path meets the
     criteria.
 
     :param constraint_expr: (string) A DAP constraint string
