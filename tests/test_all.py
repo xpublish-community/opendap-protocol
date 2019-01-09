@@ -72,6 +72,24 @@ def test_Dataset():
     assert ob1.indent == '    '
 
 
+def test_Attribute():
+
+    dataset = dap.Dataset(name='test')
+
+    attr1 = dap.Attribute(name='Attribute 1', value=3, dtype=dap.Float32)
+    attr2 = dap.Attribute(name='Attribute 2', value='a string', dtype=dap.String)
+
+    dataset.append(attr1, attr2)
+
+    assert attr1.indent == '    '
+    assert attr2.indent == '    '
+
+    assert 'Float32' in ''.join(attr1.das())
+    assert '"' in ''.join(attr2.das())
+
+    assert 'Attribute' not in ''.join(dataset.dds())
+
+
 def test_DAPAtom():
 
     pass

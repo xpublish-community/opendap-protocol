@@ -449,6 +449,9 @@ class Attribute(DAPObject):
                     value=self.value,
                     d=d)
 
+    def dds(self, *args, **kwargs):
+        yield ''
+
 
 def dods_encode(data, dtype):
     """This is the fast XDR conversion. A 100x100 array takes around 40 micro-
