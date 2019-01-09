@@ -50,6 +50,28 @@ def test_DAPObject():
     assert ob2.name == 'Object_2'
     assert ob2.parent.name == 'Object_1'
 
+    ob3 = dap.DAPObject(name=1)
+    assert ob3.name == 1
+
+
+def test_Dataset():
+
+    dataset = dap.Dataset(name='data')
+    assert dataset.name == 'data'
+    assert dataset.parent is None
+    assert dataset.indent == ''
+    assert dataset.data_path == ''
+
+    assert b'Data:' in b''.join(dataset.dods_data())
+
+    ob1 = dap.DAPObject(name='Object 1')
+
+    dataset.append(ob1)
+
+    assert ob1.data_path == 'Object_1'
+    assert ob1.indent == '    '
+
+
 def test_DAPAtom():
 
     pass
