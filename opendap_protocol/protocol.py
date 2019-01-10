@@ -190,7 +190,6 @@ class DAPAtom(DAPObject):
         if meets_constraint(constraint, self.data_path):
             yield self.dashead()
             for obj in self.children:
-                obj.parent = self
                 for stmt in obj.das(constraint=constraint):
                     yield stmt
             yield self.dastail()
@@ -373,8 +372,6 @@ class DAPDataObject(DAPObject):
 
         if 'dimensions' in kwargs:
             self.dimensions = kwargs['dimensions']
-            for dim in self.dimensions:
-                dim.parent = self
         else:
             self.dimensions = None
 
@@ -406,10 +403,12 @@ class Grid(DAPDataObject):
 
             yield self.indent + '  Maps:\n'
             for i, dim in enumerate(self.dimensions):
+                orig_parent = dim.parent
                 dim.parent = self
                 sl = slices[i] if i < len(slices) else ...
                 for stmt in dim.dds(constraint='', slicing=sl):
                     yield stmt
+                dim.parent = orig_parent
             yield self.ddstail()
 
 
