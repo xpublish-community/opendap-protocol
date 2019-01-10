@@ -18,7 +18,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 """
 opendap_protocol
 ================
@@ -89,9 +88,9 @@ class DAPObject(object):
     def dods(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             for stmt in self.dds(constraint=constraint):
-                yield stmt
+                yield stmt.encode()
 
-        yield '\n'
+        yield b'\n'
 
         if meets_constraint(constraint, self.data_path):
             for stmt in self.dods_data(constraint=constraint):

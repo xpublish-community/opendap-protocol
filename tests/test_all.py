@@ -5,6 +5,7 @@ import numpy as np
 
 XDRPACKER = xdrlib.Packer()
 
+
 def test_dods_encode():
 
     testdata = np.array(range(100), dtype=np.float32)
@@ -14,6 +15,10 @@ def test_dods_encode():
     assert xdrpacked == dap.dods_encode(testdata, dap.Float32)
 
     assert b'\x00\x00\x00\x00' == dap.dods_encode(0, dap.Float32)
+
+    arrdata = np.asarray([1, 2, 3])
+    assert dap.dods_encode(arrdata,
+                           dap.Float64) == pack_xdr_double_array(arrdata)
 
 
 def test_parse_slice():
@@ -25,7 +30,8 @@ def test_parse_slice():
 
 def test_parse_slice_constraint():
 
-    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, ..., ..., slice(4, 8))
+    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, ..., ...,
+                                                            slice(4, 8))
     assert dap.parse_slice_constraint('[0][:][:]') == (0, ..., ...)
     assert dap.parse_slice_constraint('[0][:]') == (0, ...)
     assert dap.parse_slice_constraint('[0]') == (0, )
@@ -77,7 +83,8 @@ def test_Attribute():
     dataset = dap.Dataset(name='test')
 
     attr1 = dap.Attribute(name='Attribute 1', value=3, dtype=dap.Float32)
-    attr2 = dap.Attribute(name='Attribute 2', value='a string', dtype=dap.String)
+    attr2 = dap.Attribute(
+        name='Attribute 2', value='a string', dtype=dap.String)
 
     dataset.append(attr1, attr2)
 
@@ -91,8 +98,59 @@ def test_Attribute():
 
 
 def test_DAPAtom():
-
     pass
+
+
+def test_complete_dap_response():
+
+    expected_das = 'Attributes {\n'\
+                   '    x {\n' \
+                   '    }\n' \
+                   '    y {\n' \
+                   '    }\n'\
+                   '    z {\n'\
+                   '        String units "second";\n'\
+                   '        Float64 size 4;\n'\
+                   '    }\n'\
+                   '}\n'
+
+    expected_dds = 'Dataset {\n'\
+                   '    Int16 x[x = 2];\n' \
+                   '    Int16 y[y = 2];\n'\
+                   '    Grid {\n'\
+                   '      Array:\n'\
+                   '        Int32 z[x = 2][y = 2];\n'\
+                   '      Maps:\n' \
+                   '        Int16 x[x = 2];\n' \
+                   '        Int16 y[y = 2];\n'\
+                   '    } z;\n'\
+                   '} test;\n'
+
+    expected_dods_data = b'\nData:\r\n\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x0a\x00\x00\x00\x0b\x00\x00\x00\x04\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x0a\x00\x00\x00\x0b'
+
+    dataset = dap.Dataset(name='test')
+    x = dap.Array(name='x', data=np.array([0, 1]), dtype=dap.Int16)
+    y = dap.Array(name='y', data=np.array([10, 11]), dtype=dap.Int16)
+
+    z = dap.Grid(
+        name='z',
+        data=np.array([[0, 0], [0, 0]]),
+        dtype=dap.Int32,
+        dimensions=[x, y])
+
+    z_attr = [
+        dap.Attribute(name='units', value='second', dtype=dap.String),
+        dap.Attribute(name='size', value=4, dtype=dap.Float64),
+    ]
+    z.append(*z_attr)
+
+    dataset.append(x, y, z)
+
+    assert ''.join(dataset.das()) == expected_das
+    assert ''.join(dataset.dds()) == expected_dds
+    assert b''.join(
+        dataset.dods()) == expected_dds.encode() + expected_dods_data
+
 
 def pack_xdr_float(data):
     XDRPACKER.reset()
@@ -101,3 +159,10 @@ def pack_xdr_float(data):
     XDRPACKER.pack_farray(len(data), data, XDRPACKER.pack_float)
     return XDRPACKER.get_buffer()
 
+
+def pack_xdr_double_array(data):
+    XDRPACKER.reset()
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_farray(len(data), data.astype('<f8'), XDRPACKER.pack_double)
+    return XDRPACKER.get_buffer()
