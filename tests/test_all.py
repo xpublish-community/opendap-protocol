@@ -151,6 +151,9 @@ def test_complete_dap_response():
     assert b''.join(
         dataset.dods()) == expected_dds.encode() + expected_dods_data
 
+    assert x.parent == dataset
+    assert y.parent == dataset
+
 
 def pack_xdr_float(data):
     XDRPACKER.reset()
