@@ -20,8 +20,7 @@ tests:
     - pip install --no-cache-dir -i https://nexus.meteoswiss.ch/repository/python-all/simple pytest pytest-cov
     - pytest --cov-report term-missing --cov=opendap_protocol
   tags:
-    - devt
-    - pythontest
+    - app
 
 deploy:
   stage: deploy
@@ -31,7 +30,6 @@ deploy:
     - python setup.py bdist_wheel
     - twine upload dist/*
   tags:
-    - devt
-    - pythontest
+    - app
   only:
     - tags
