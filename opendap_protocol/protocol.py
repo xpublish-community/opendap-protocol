@@ -182,6 +182,12 @@ class DAPAtom(DAPObject):
 
         :returns: A subclass of :class:`DAPAtom`
         """
+        # Handle special cases first
+        if nptype == np.int8:
+            return Int16
+        if nptype == np.uint8:
+            return Byte
+        # then handle the rest
         for subclass in cls.subclasses():
             if subclass.dtype == nptype:
                 return subclass
