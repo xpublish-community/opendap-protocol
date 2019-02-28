@@ -23,19 +23,19 @@ def test_dods_encode():
 
 def test_parse_slice():
 
-    assert dap.parse_slice(':') == ...
+    assert dap.parse_slice(':') == Ellipsis
     assert dap.parse_slice('3:7') == slice(3, 8)
     assert dap.parse_slice('4') == 4
 
 
 def test_parse_slice_constraint():
 
-    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, ..., ...,
+    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, Ellipsis, Ellipsis,
                                                             slice(4, 8))
-    assert dap.parse_slice_constraint('[0][:][:]') == (0, ..., ...)
-    assert dap.parse_slice_constraint('[0][:]') == (0, ...)
+    assert dap.parse_slice_constraint('[0][:][:]') == (0, Ellipsis, Ellipsis)
+    assert dap.parse_slice_constraint('[0][:]') == (0, Ellipsis)
     assert dap.parse_slice_constraint('[0]') == (0, )
-    assert dap.parse_slice_constraint('[]') == (..., )
+    assert dap.parse_slice_constraint('[]') == (Ellipsis, )
 
 
 def test_meets_constraint():
