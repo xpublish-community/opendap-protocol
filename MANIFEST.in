@@ -1,3 +1,1 @@
-include LICENSE README.rst HISTORY.rst AUTHORS.rst
-include versioneer.py
-include opendap_protocol/_version.py
+include LICENSE README.md HISTORY.rst AUTHORS.rst

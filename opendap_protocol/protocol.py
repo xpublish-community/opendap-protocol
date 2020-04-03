@@ -19,8 +19,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-opendap_protocol
-================
 
 A pure Python implementation of the OPeNDAP server protocol.
 
@@ -30,8 +28,7 @@ minimum of the DAP 2.0 protocol: DDS, DAS, and DODS responses and slicing. Array
 data needs to be supplied as :class:`numpy.ndarray`.
 
 The classes defined here allow the user to construct a data model in a flexible
-way, by describing the data in a hierarchical way using the data types defined
-by DAP.
+way, by describing the data hierarchy using data types defined by DAP.
 
 This library only implements the server side encoding. It is tested to serve
 clients using the netCDF4 library. PyDAP client libraries are not supported.

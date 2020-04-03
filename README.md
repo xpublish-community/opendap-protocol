@@ -1,4 +1,4 @@
-opendap_protocol
+opendap-protocol
 ================
 
 [![pipeline status](https://gitlab.meteoswiss.ch/APP/opendap-protocol/badges/master/pipeline.svg)](https://gitlab.meteoswiss.ch/APP/opendap-protocol/commits/master)
