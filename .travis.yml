@@ -5,5 +5,9 @@ python:
   - "3.8"
 install:
   - python setup.py install
+  - pip install codecov
+  - pip install pytest-cov
 script:
-  - python setup.py test
+  - pytest run --cov=opendap_protocol --cov-report term
+after_success:
+  - codecov
