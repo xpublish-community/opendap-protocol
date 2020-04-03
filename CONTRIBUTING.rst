@@ -15,7 +15,7 @@ Types of Contributions
 Report Bugs
 ~~~~~~~~~~~
 
-Report bugs at https://gitlab.meteoswiss.ch/APP/opendap_protocol/issues.
+Report bugs at https://github.com/MeteoSwiss/opendap-protocol/issues
 
 If you are reporting a bug, please include:
 
@@ -26,13 +26,13 @@ If you are reporting a bug, please include:
 Fix Bugs
 ~~~~~~~~
 
-Look through the GitLab issues for bugs. Anything tagged with "bug" and "help
+Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
 wanted" is open to whoever wants to implement it.
 
 Implement Features
 ~~~~~~~~~~~~~~~~~~
 
-Look through the GitLab issues for features. Anything tagged with "enhancement"
+Look through the GitHub issues for features. Anything tagged with "enhancement"
 and "help wanted" is open to whoever wants to implement it.
 
 Write Documentation
@@ -45,7 +45,7 @@ articles, and such.
 Submit Feedback
 ~~~~~~~~~~~~~~~
 
-The best way to send feedback is to file an issue at https://gitlab.meteoswiss.ch/APP/opendap_protocol/issues.
+The best way to send feedback is to file an issue at https://github.com/MeteoSwiss/opendap-protocol/issues
 
 If you are proposing a feature:
 
@@ -59,15 +59,16 @@ Get Started!
 
 Ready to contribute? Here's how to set up `opendap_protocol` for local development.
 
-1. Clone `opendap_protocol` repo from GitLab.
+1. Clone `opendap_protocol` repo from GitHub.
 
-    $ git clone git@gitlab.meteoswiss.ch/APP/opendap_protocol.git
+    $ git clone git@github.com:MeteoSwiss/opendap-protocol.git
 
-2. Install dependencies into a virtualenv. Assuming you have pipenv installed, this is how you set up your fork for local development::
+2. Create a virtualenv and install dependencies::
 
     $ cd opendap_protocol
-    $ pipenv install --dev
-    $ pipenv shell
+    $ virtualenv venv
+    $ source venv/bin/activate
+    $ python setup.py develop
 
 3. Create a branch for local development::
 
@@ -78,27 +79,27 @@ Ready to contribute? Here's how to set up `opendap_protocol` for local developme
 4. When you're done making changes, check that your changes pass pylint and the
    tests, including testing other Python versions with tox::
 
+    $ python setup.py test
     $ pylint opendap_protocol
-    $ pytest
     $ tox
 
-5. Commit your changes and push your branch to GitLab::
+5. Commit your changes and push your branch to GitHub::
 
     $ git add <files to add>
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-6. Submit a merge request through the GitLab website.
+6. Submit a pull request through the GitHub website.
 
-Merge Request Guidelines
+Pull Request Guidelines
 ------------------------
 
-Before you submit a merge request, check that it meets these guidelines:
+Before you submit a pull request, check that it meets these guidelines:
 
-1. The merge request should include tests.
-2. If the merge request adds functionality, the docs should be updated. Put
+1. The pull request should include tests.
+2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The merge request should work for Python 3.7 (or greater). Check
-   https://gitlab.meteoswiss.ch/APP/opendap_protocol/merge_requests
+3. The pull request should work for Python 3.6 (or greater). Check
+   https://github.com/MeteoSwiss/opendap-protocol/pulls
    and make sure that the tests pass for all supported Python versions.

@@ -1,11 +1,6 @@
 opendap-protocol
 ================
 
-[![pipeline status](https://gitlab.meteoswiss.ch/APP/opendap-protocol/badges/master/pipeline.svg)](https://gitlab.meteoswiss.ch/APP/opendap-protocol/commits/master)
-[![coverage report](https://gitlab.meteoswiss.ch/APP/opendap-protocol/badges/master/coverage.svg)](https://gitlab.meteoswiss.ch/APP/opendap-protocol/commits/master)
-
-
-
 A pure Python implementation of the OPeNDAP server protocol.
 
 This module allows you to serve arbitrary data structures through the web
