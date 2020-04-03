@@ -12,3 +12,4 @@ venv
 .coverage
 coverage.xml
 _build
+.ropeproject

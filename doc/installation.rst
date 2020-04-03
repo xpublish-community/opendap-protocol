@@ -27,19 +27,19 @@ you through the process.
 From source
 -----------
 
-The sources for opendap-protocol can be downloaded from the `GitLab repo`_.
+The sources for opendap-protocol can be downloaded from the `GitHub repo`_.
 
 You can either clone the public repository:
 
 .. code-block:: console
 
-    $ git clone gitlab@gitlab.meteoswiss.ch:phm/opendap-protocol.git
+    $ git clone git@github.com:MeteoSwiss/opendap-protocol.git
 
-Or download the `tarball`_:
+Or download the `ZIP-file`_:
 
 .. code-block:: console
 
-    $ curl  -OL  https://gitlab.meteoswiss.ch/Philipp Falke/opendap-protocol/-/archive/master/opendap-protocol-master.tar.gz
+    $ curl  -OL https://github.com/MeteoSwiss/opendap-protocol/archive/master.zip
 
 Once you have a copy of the source, you can install it with:
 
@@ -48,5 +48,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _GitLab repo: https://gitlab.meteoswiss.ch/phm/opendap-protocol
-.. _tarball: https://gitlab.meteoswiss.ch/Philipp Falke/opendap-protocol/-/archive/master/opendap-protocol-master.tar.gz
+.. _GitHub repo: https://github.com/MeteoSwiss/opendap-protocol
+.. _ZIP-file: https://github.com/MeteoSwiss/opendap-protocol/archive/master.zip
