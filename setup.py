@@ -4,7 +4,6 @@
 
 from setuptools import setup, find_packages
 
-import versioneer
 
 requirements = [
     'numpy',
@@ -31,8 +30,7 @@ package_data = {}
 
 setup(
     name='opendap-protocol',
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    use_scm_version=True,
     author="Philipp Falke",
     author_email='philipp.falke@meteoswiss.ch',
     description='A pure Python implementation of the OPeNDAP server protocol.',
