@@ -3,7 +3,7 @@ opendap-protocol
 
 
 
-[![Build Status](https://travis-ci.com/MeteoSwiss/opendap-protocol.svg?branch=master)](https://travis-ci.com/MeteoSwiss/opendap-protocol) [![codecov](https://codecov.io/gh/MeteoSwiss/opendap-protocol/branch/master/graph/badge.svg)](https://codecov.io/gh/MeteoSwiss/opendap-protocol) [![Documentation Status](https://readthedocs.org/projects/opendap-protocol/badge/?version=latest)](https://opendap-protocol.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/MeteoSwiss/opendap-protocol.svg?branch=master)](https://travis-ci.com/MeteoSwiss/opendap-protocol) [![codecov](https://codecov.io/gh/MeteoSwiss/opendap-protocol/branch/master/graph/badge.svg)](https://codecov.io/gh/MeteoSwiss/opendap-protocol) [![Documentation Status](https://readthedocs.org/projects/opendap-protocol/badge/?version=latest)](https://opendap-protocol.readthedocs.io/en/latest/?badge=latest) [![PyPI version](https://badge.fury.io/py/opendap-protocol.svg)](https://badge.fury.io/py/opendap-protocol)
 
 
 
