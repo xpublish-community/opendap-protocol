@@ -189,12 +189,17 @@ class DAPAtom(DAPObject):
         # Handle special cases first
         if nptype == np.int8:
             return Int16
-        if nptype == np.uint8:
+        elif nptype == np.uint8:
             return Byte
-        # then handle the rest
-        for subclass in cls.subclasses():
-            if subclass.dtype == nptype:
-                return subclass
+        elif nptype == np.int64:
+            return Int32
+        elif nptype == np.uint64:
+            return UInt32
+        else:
+            # then handle the rest
+            for subclass in cls.subclasses():
+                if subclass.dtype == nptype:
+                    return subclass
 
     def das(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
@@ -475,9 +480,9 @@ def dods_encode(data, dtype):
     length = np.prod(data.shape)
     packed_length = b''
     if not is_scalar:
-        packed_length = length.astype('<i4').byteswap().tostring() * 2
+        packed_length = length.astype('<i4').byteswap().tobytes() * 2
 
-    packed_data = data.astype(dtype.str).byteswap().tostring()
+    packed_data = data.astype(dtype.str).byteswap().tobytes()
 
     return packed_length + packed_data
 
