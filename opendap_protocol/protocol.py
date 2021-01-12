@@ -188,8 +188,10 @@ class DAPAtom(DAPObject):
         # Handle special cases first
         if nptype == np.int8:
             return Int16
-        if nptype == np.uint8:
+        elif nptype == np.uint8:
             return Byte
+        elif nptype == np.int64:
+            return Int32
         # then handle the rest
         for subclass in cls.subclasses():
             if subclass.dtype == nptype:
