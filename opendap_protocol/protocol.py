@@ -221,32 +221,32 @@ class Byte(DAPAtom):
 
 class Int16(DAPAtom):
     dtype = np.int16
-    str = '<i4'
+    str = '>i4'
 
 
 class UInt16(DAPAtom):
     dtype = np.uint16
-    str = '<u4'
+    str = '>u4'
 
 
 class Int32(DAPAtom):
     dtype = np.int32
-    str = '<i4'
+    str = '>i4'
 
 
 class UInt32(DAPAtom):
     dtype = np.uint32
-    str = '<u4'
+    str = '>u4'
 
 
 class Float32(DAPAtom):
     dtype = np.float32
-    str = '<f4'
+    str = '>f4'
 
 
 class Float64(DAPAtom):
     dtype = np.float64
-    str = '<f8'
+    str = '>f8'
 
 
 class String(DAPAtom):
@@ -479,9 +479,18 @@ def dods_encode(data, dtype):
     if isinstance(data, da.Array):
         for x in range(0, data.shape[0], data.chunks[0][0]):
             yield np.array(data[x:x + data.chunks[0][0],
-                                ...]).astype(dtype.str).byteswap().tobytes()
+                                ...]).astype(dtype.str).tobytes()
     else:
-        yield data.astype(dtype.str).byteswap().tobytes()
+        yield data.astype(dtype.str).tobytes()
+        #yield data.astype(dtype.str).byteswap().tobytes()
+
+    ######
+    #import pudb; pudb.set_trace()
+    #if isinstance(data, dask.array.Array):
+    #    return packed_length + data.map_blocks(np.ndarray.tobytes, dtype=dtype.str)
+    #else:
+    #    packed_data = data.astype(dtype.str).tobytes()
+    #    return packed_length + packed_data
 
 
 def parse_slice_constraint(constraint):

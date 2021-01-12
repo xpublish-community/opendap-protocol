@@ -26,6 +26,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from opendap_protocol.protocol import dods_encode
 import opendap_protocol as dap
 
 import xdrlib
@@ -42,13 +43,13 @@ def test_dods_encode():
 
     xdrpacked = pack_xdr_float(testdata)
 
-    assert xdrpacked == dap.dods_encode(testdata, dap.Float32)
+    assert xdrpacked == b''.join(dap.dods_encode(testdata, dap.Float32))
 
-    assert b'\x00\x00\x00\x00' == dap.dods_encode(0, dap.Float32)
+    assert b'\x00\x00\x00\x00' == b''.join(dap.dods_encode(0, dap.Float32))
 
     arrdata = np.asarray([1, 2, 3])
-    assert dap.dods_encode(arrdata,
-                           dap.Float64) == pack_xdr_double_array(arrdata)
+    assert b''.join(dap.dods_encode(
+        arrdata, dap.Float64)) == pack_xdr_double_array(arrdata)
 
     # test dask vs numpy
     x_dim = 28
@@ -66,12 +67,13 @@ def test_dods_encode():
     data_vals = da.from_array(np_data,
                               chunks=(14, y_dim, 1, vertical_dim, 1, 1))
 
-    x = dap.dods_encode(data_vals)
-    y = dap.dods_encode(np_data)
-    x_str = reduce(lambda a, b: a + b, list(x))
-    y_str = reduce(lambda a, b: a + b, list(y))
+    x = dap.dods_encode(data_vals, dap.Int32)
+    y = dap.dods_encode(np_data, dap.Int32)
+    assert b''.join(x) == b''.join(y)
 
-    assert x_str == y_str
+    int_arrdata = np.arange(0, 20, 2, dtype='<i4')
+    assert b''.join(dods_encode(int_arrdata,
+                                dap.Int32)) == pack_xdr_int_array(int_arrdata)
 
 
 def test_parse_slice():
@@ -222,4 +224,12 @@ def pack_xdr_double_array(data):
     XDRPACKER.pack_int(np.asarray(len(data)))
     XDRPACKER.pack_int(np.asarray(len(data)))
     XDRPACKER.pack_farray(len(data), data.astype('<f8'), XDRPACKER.pack_double)
+    return XDRPACKER.get_buffer()
+
+
+def pack_xdr_int_array(data):
+    XDRPACKER.reset()
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_farray(len(data), data.astype('<i4'), XDRPACKER.pack_int)
     return XDRPACKER.get_buffer()
