@@ -211,7 +211,7 @@ class DAPAtom(DAPObject):
 
     def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield dods_encode(self._val, self)
+            yield from dods_encode(self._val, self)
 
 
 class Byte(DAPAtom):
@@ -255,7 +255,7 @@ class String(DAPAtom):
 
     def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield dods_encode(self._val.encode('ascii'), self)
+            yield from dods_encode(self._val.encode('ascii'), self)
 
 
 class URL(String):
@@ -386,11 +386,11 @@ class DAPDataObject(DAPObject):
 
         if meets_constraint(constraint, self.data_path):
             slices = parse_slice_constraint(constraint)
-            yield dods_encode(self.data[slices], self.dtype)
+            yield from dods_encode(self.data[slices], self.dtype)
             if self.dimensions is not None:
                 for i, dim in enumerate(self.dimensions):
                     sl = slices[i] if i < len(slices) else ...
-                    yield dods_encode(dim.data[sl], dim.dtype)
+                    yield from dods_encode(dim.data[sl], dim.dtype)
 
 
 class Grid(DAPDataObject):
