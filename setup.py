@@ -64,9 +64,9 @@ setup(
     description='A pure Python implementation of the OPeNDAP server protocol.',
     url='https://github.com/MeteoSwiss/opendap-protocol',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD-3-Clause License',
+        'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
