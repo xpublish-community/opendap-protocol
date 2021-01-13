@@ -33,6 +33,8 @@ from setuptools import setup, find_packages
 
 requirements = [
     'numpy',
+    'dask',
+    'toolz',
 ]
 setup_requirements = [
     'setuptools_scm',
