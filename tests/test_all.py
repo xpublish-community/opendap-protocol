@@ -26,10 +26,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from opendap_protocol.protocol import dods_encode
 import opendap_protocol as dap
 
 import xdrlib
 import numpy as np
+import dask.array as da
+from functools import reduce
 
 XDRPACKER = xdrlib.Packer()
 
@@ -40,13 +43,37 @@ def test_dods_encode():
 
     xdrpacked = pack_xdr_float(testdata)
 
-    assert xdrpacked == dap.dods_encode(testdata, dap.Float32)
+    assert xdrpacked == b''.join(dap.dods_encode(testdata, dap.Float32))
 
-    assert b'\x00\x00\x00\x00' == dap.dods_encode(0, dap.Float32)
+    assert b'\x00\x00\x00\x00' == b''.join(dap.dods_encode(0, dap.Float32))
 
     arrdata = np.asarray([1, 2, 3])
-    assert dap.dods_encode(arrdata,
-                           dap.Float64) == pack_xdr_double_array(arrdata)
+    assert b''.join(dap.dods_encode(
+        arrdata, dap.Float64)) == pack_xdr_double_array(arrdata)
+
+    # test dask vs numpy
+    x_dim = 28
+    y_dim = 30
+    time_dim = 8
+    vertical_dim = 1
+    real_dim = 21
+    ref_time_dim = 3
+
+    np_data = np.arange(
+        0, x_dim * y_dim * time_dim * vertical_dim * real_dim *
+        ref_time_dim).reshape(
+            (x_dim, y_dim, time_dim, vertical_dim, real_dim, ref_time_dim))
+
+    data_vals = da.from_array(np_data,
+                              chunks=(14, y_dim, 1, vertical_dim, 1, 1))
+
+    x = dap.dods_encode(data_vals, dap.Int32)
+    y = dap.dods_encode(np_data, dap.Int32)
+    assert b''.join(x) == b''.join(y)
+
+    int_arrdata = np.arange(0, 20, 2, dtype='<i4')
+    assert b''.join(dods_encode(int_arrdata,
+                                dap.Int32)) == pack_xdr_int_array(int_arrdata)
 
 
 def test_parse_slice():
@@ -58,7 +85,8 @@ def test_parse_slice():
 
 def test_parse_slice_constraint():
 
-    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, Ellipsis, Ellipsis,
+    assert dap.parse_slice_constraint('[0][:][:][4:7]') == (0, Ellipsis,
+                                                            Ellipsis,
                                                             slice(4, 8))
     assert dap.parse_slice_constraint('[0][:][:]') == (0, Ellipsis, Ellipsis)
     assert dap.parse_slice_constraint('[0][:]') == (0, Ellipsis)
@@ -111,8 +139,9 @@ def test_Attribute():
     dataset = dap.Dataset(name='test')
 
     attr1 = dap.Attribute(name='Attribute 1', value=3, dtype=dap.Float32)
-    attr2 = dap.Attribute(
-        name='Attribute 2', value='a string', dtype=dap.String)
+    attr2 = dap.Attribute(name='Attribute 2',
+                          value='a string',
+                          dtype=dap.String)
 
     dataset.append(attr1, attr2)
 
@@ -160,11 +189,10 @@ def test_complete_dap_response():
     x = dap.Array(name='x', data=np.array([0, 1]), dtype=dap.Int16)
     y = dap.Array(name='y', data=np.array([10, 11]), dtype=dap.Int16)
 
-    z = dap.Grid(
-        name='z',
-        data=np.array([[0, 0], [0, 0]]),
-        dtype=dap.Int32,
-        dimensions=[x, y])
+    z = dap.Grid(name='z',
+                 data=np.array([[0, 0], [0, 0]]),
+                 dtype=dap.Int32,
+                 dimensions=[x, y])
 
     z_attr = [
         dap.Attribute(name='units', value='second', dtype=dap.String),
@@ -196,4 +224,12 @@ def pack_xdr_double_array(data):
     XDRPACKER.pack_int(np.asarray(len(data)))
     XDRPACKER.pack_int(np.asarray(len(data)))
     XDRPACKER.pack_farray(len(data), data.astype('<f8'), XDRPACKER.pack_double)
+    return XDRPACKER.get_buffer()
+
+
+def pack_xdr_int_array(data):
+    XDRPACKER.reset()
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_int(np.asarray(len(data)))
+    XDRPACKER.pack_farray(len(data), data.astype('<i4'), XDRPACKER.pack_int)
     return XDRPACKER.get_buffer()

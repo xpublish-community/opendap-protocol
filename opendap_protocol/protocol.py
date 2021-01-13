@@ -25,7 +25,6 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 """
 A pure Python implementation of the OPeNDAP server protocol.
 
@@ -43,6 +42,7 @@ clients using the netCDF4 library. PyDAP client libraries are not supported.
 
 import re
 import numpy as np
+import dask.array as da
 
 INDENT = '    '
 SLICE_CONSTRAINT_RE = r'\[([\d,\W]+)\]$'
@@ -55,7 +55,6 @@ class DAPError(Exception):
 class DAPObject(object):
     """A generic DAP object class.
     """
-
     def __init__(self, name='', parent=None, *args, **kwargs):
         try:
             self.name = '_'.join(name.split(' '))
@@ -132,12 +131,12 @@ class DAPObject(object):
                 return '.'.join([self.parent.data_path, self.name])
 
     def ddshead(self):
-        return '{indent}{obj} {{\n'.format(
-            indent=self.indent, obj=self.__class__.__name__)
+        return '{indent}{obj} {{\n'.format(indent=self.indent,
+                                           obj=self.__class__.__name__)
 
     def ddstail(self):
-        return '{indent}}} {name};\n'.format(
-            indent=self.indent, name=self.name)
+        return '{indent}}} {name};\n'.format(indent=self.indent,
+                                             name=self.name)
 
     def dashead(self):
         name = self.name
@@ -211,12 +210,13 @@ class DAPAtom(DAPObject):
 
     def dds(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield '{indent}{dtype} {name};\n'.format(
-                indent=self.indent, dtype=self.__str__(), name=self.name)
+            yield '{indent}{dtype} {name};\n'.format(indent=self.indent,
+                                                     dtype=self.__str__(),
+                                                     name=self.name)
 
     def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield dods_encode(self._val, self)
+            yield from dods_encode(self._val, self)
 
 
 class Byte(DAPAtom):
@@ -226,32 +226,32 @@ class Byte(DAPAtom):
 
 class Int16(DAPAtom):
     dtype = np.int16
-    str = '<i4'
+    str = '>i4'
 
 
 class UInt16(DAPAtom):
     dtype = np.uint16
-    str = '<u4'
+    str = '>u4'
 
 
 class Int32(DAPAtom):
     dtype = np.int32
-    str = '<i4'
+    str = '>i4'
 
 
 class UInt32(DAPAtom):
     dtype = np.uint32
-    str = '<u4'
+    str = '>u4'
 
 
 class Float32(DAPAtom):
     dtype = np.float32
-    str = '<f4'
+    str = '>f4'
 
 
 class Float64(DAPAtom):
     dtype = np.float64
-    str = '<f8'
+    str = '>f8'
 
 
 class String(DAPAtom):
@@ -260,7 +260,7 @@ class String(DAPAtom):
 
     def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield dods_encode(self._val.encode('ascii'), self)
+            yield from dods_encode(self._val.encode('ascii'), self)
 
 
 class URL(String):
@@ -277,7 +277,6 @@ class Structure(DAPObject):
 class Dataset(Structure):
     """Class representing a DAP dataset.
     """
-
     def dods_data(self, constraint=''):
 
         yield b'Data:\r\n'
@@ -342,7 +341,6 @@ class Sequence(DAPObject):
 class SequenceInstance(DAPObject):
     """Class representing a data item that will be added to a sequence.
     """
-
     @property
     def data_path(self):
         return self.parent.data_path
@@ -372,7 +370,6 @@ class DAPDataObject(DAPObject):
     """A generic class for typed non-atomic objects holding actual data (i.e.
     Array and Grid).
     """
-
     def _parse_args(self, args, kwargs):
 
         self.data = kwargs.get('data', None)
@@ -394,11 +391,11 @@ class DAPDataObject(DAPObject):
 
         if meets_constraint(constraint, self.data_path):
             slices = parse_slice_constraint(constraint)
-            yield dods_encode(self.data[slices], self.dtype)
+            yield from dods_encode(self.data[slices], self.dtype)
             if self.dimensions is not None:
                 for i, dim in enumerate(self.dimensions):
                     sl = slices[i] if i < len(slices) else ...
-                    yield dods_encode(dim.data[sl], dim.dtype)
+                    yield from dods_encode(dim.data[sl], dim.dtype)
 
 
 class Grid(DAPDataObject):
@@ -482,9 +479,25 @@ def dods_encode(data, dtype):
     if not is_scalar:
         packed_length = length.astype('<i4').byteswap().tobytes() * 2
 
-    packed_data = data.astype(dtype.str).byteswap().tobytes()
 
-    return packed_length + packed_data
+    yield packed_length
+
+
+    if isinstance(data, da.Array):
+        for x in range(0, data.shape[0], data.chunks[0][0]):
+            yield np.array(data[x:x + data.chunks[0][0],
+                                ...]).astype(dtype.str).tobytes()
+    else:
+        yield data.astype(dtype.str).tobytes()
+        #yield data.astype(dtype.str).byteswap().tobytes()
+
+    ######
+    #import pudb; pudb.set_trace()
+    #if isinstance(data, dask.array.Array):
+    #    return packed_length + data.map_blocks(np.ndarray.tobytes, dtype=dtype.str)
+    #else:
+    #    packed_data = data.astype(dtype.str).tobytes()
+    #    return packed_length + packed_data
 
 
 def parse_slice_constraint(constraint):
