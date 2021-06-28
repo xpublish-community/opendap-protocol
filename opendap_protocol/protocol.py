@@ -479,14 +479,13 @@ def dods_encode(data, dtype):
     if not is_scalar:
         packed_length = length.astype('<i4').byteswap().tobytes() * 2
 
-
     yield packed_length
 
-
     if isinstance(data, da.Array):
-        for x in range(0, data.shape[0], data.chunks[0][0]):
-            yield np.array(data[x:x + data.chunks[0][0],
-                                ...]).astype(dtype.str).tobytes()
+        chunk_size = int(20e6 / data.dtype.itemsize)
+        serialize_data = data.ravel().rechunk(chunk_size)
+        for block in serialize_data.blocks:
+            yield block.astype(dtype.str).compute().tobytes()
     else:
         yield data.astype(dtype.str).tobytes()
         #yield data.astype(dtype.str).byteswap().tobytes()
