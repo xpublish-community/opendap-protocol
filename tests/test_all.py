@@ -26,13 +26,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from opendap_protocol.protocol import dods_encode
-import opendap_protocol as dap
-
 import xdrlib
-import numpy as np
-import dask.array as da
 from functools import reduce
+
+import dask.array as da
+import numpy as np
+import opendap_protocol as dap
+import pytest
+from opendap_protocol.protocol import dods_encode
 
 XDRPACKER = xdrlib.Packer()
 
@@ -158,7 +159,16 @@ def test_DAPAtom():
     pass
 
 
-def test_complete_dap_response():
+test_arrays = [
+    (np.array([0, 1]), np.array([10, 11]), np.array([[2, 3], [4, 5]])),
+    (da.array([0, 1]), da.array([10, 11]), da.array([[2, 3], [4, 5]])),
+]
+
+
+@pytest.mark.parametrize('x,y,z',
+                         test_arrays,
+                         ids=['numpy.array', 'dask.array'])
+def test_complete_dap_response(x, y, z):
 
     expected_das = 'Attributes {\n'\
                    '    x {\n' \
@@ -183,32 +193,107 @@ def test_complete_dap_response():
                    '    } z;\n'\
                    '} test;\n'
 
-    expected_dods_data = b'\nData:\r\n\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x0a\x00\x00\x00\x0b\x00\x00\x00\x04\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02\x00\x00\x00\x02\x00\x00\x00\x0a\x00\x00\x00\x0b'
+    expected_dods_data = b''.join([
+        b'\nData:\r\n',
+        pack_xdr_int_array(x),
+        pack_xdr_int_array(y),
+        pack_xdr_int_array(z.ravel()),
+        pack_xdr_int_array(x),
+        pack_xdr_int_array(y)
+    ])
 
     dataset = dap.Dataset(name='test')
-    x = dap.Array(name='x', data=np.array([0, 1]), dtype=dap.Int16)
-    y = dap.Array(name='y', data=np.array([10, 11]), dtype=dap.Int16)
+    x_dap = dap.Array(name='x', data=x, dtype=dap.Int16)
+    y_dap = dap.Array(name='y', data=y, dtype=dap.Int16)
 
-    z = dap.Grid(name='z',
-                 data=np.array([[0, 0], [0, 0]]),
-                 dtype=dap.Int32,
-                 dimensions=[x, y])
+    z_dap = dap.Grid(name='z',
+                     data=z,
+                     dtype=dap.Int32,
+                     dimensions=[x_dap, y_dap])
 
     z_attr = [
         dap.Attribute(name='units', value='second', dtype=dap.String),
         dap.Attribute(name='size', value=4, dtype=dap.Float64),
     ]
-    z.append(*z_attr)
+    z_dap.append(*z_attr)
 
-    dataset.append(x, y, z)
+    dataset.append(x_dap, y_dap, z_dap)
 
     assert ''.join(dataset.das()) == expected_das
     assert ''.join(dataset.dds()) == expected_dds
     assert b''.join(
         dataset.dods()) == expected_dds.encode() + expected_dods_data
 
-    assert x.parent == dataset
-    assert y.parent == dataset
+    assert x_dap.parent == dataset
+    assert y_dap.parent == dataset
+
+
+@pytest.mark.parametrize('x,y,z',
+                         test_arrays,
+                         ids=['numpy.array', 'dask.array'])
+def test_sliced_dap_response(x, y, z):
+    """Test if slicing of a DAP dataset works as expected, including a 
+    """
+    expected_das = 'Attributes {\n'\
+                   '    z {\n'\
+                   '        String units "second";\n'\
+                   '        Float64 size 4;\n'\
+                   '    }\n'\
+                   '}\n'
+
+    expected_dds = 'Dataset {\n'\
+                   '    Grid {\n'\
+                   '      Array:\n'\
+                   '        Int32 z[x = 1][y = 1];\n'\
+                   '      Maps:\n' \
+                   '        Int16 x[x = 1];\n' \
+                   '        Int16 y[y = 1];\n'\
+                   '    } z;\n'\
+                   '} test;\n'
+
+    expected_dods_data = b''.join([
+        b'\nData:\r\n',
+        pack_xdr_int_array(np.array([z[0][0]])),
+        pack_xdr_int_array(np.array([x[0]])),
+        pack_xdr_int_array(np.array([y[0]]))
+    ])
+
+    dataset = dap.Dataset(name='test')
+    x_dap = dap.Array(name='x', data=x, dtype=dap.Int16)
+    y_dap = dap.Array(name='y', data=y, dtype=dap.Int16)
+
+    z_dap = dap.Grid(name='z',
+                     data=z,
+                     dtype=dap.Int32,
+                     dimensions=[x_dap, y_dap])
+
+    z_attr = [
+        dap.Attribute(name='units', value='second', dtype=dap.String),
+        dap.Attribute(name='size', value=4, dtype=dap.Float64),
+    ]
+    z_dap.append(*z_attr)
+
+    dataset.append(x_dap, y_dap, z_dap)
+
+    assert ''.join(dataset.das(constraint='z.z[0][0]')) == expected_das
+    assert ''.join(dataset.dds(constraint='z.z[0][0]')) == expected_dds
+    assert b''.join(dataset.dods(
+        constraint='z.z[0][0]')) == expected_dds.encode() + expected_dods_data
+
+
+def test_set_dask_encoding_chunk_size():
+    from importlib import reload
+
+    import opendap_protocol.protocol
+    chunk_size = 123
+    from opendap_protocol.protocol import set_dask_encoding_chunk_size
+    set_dask_encoding_chunk_size(chunk_size)
+
+    assert opendap_protocol.protocol.Config.DASK_ENCODE_CHUNK_SIZE == chunk_size
+
+    # Restore the default value
+    reload(opendap_protocol.protocol)
+    assert opendap_protocol.protocol.Config.DASK_ENCODE_CHUNK_SIZE == 20e6
 
 
 def pack_xdr_float(data):
