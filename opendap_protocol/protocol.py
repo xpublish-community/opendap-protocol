@@ -41,18 +41,25 @@ clients using the netCDF4 library. PyDAP client libraries are not supported.
 """
 
 import re
-import numpy as np
+from dataclasses import dataclass
+
 import dask.array as da
+import numpy as np
 
 INDENT = '    '
 SLICE_CONSTRAINT_RE = r'\[([\d,\W]+)\]$'
+
+
+@dataclass
+class Config:
+    DASK_ENCODE_CHUNK_SIZE: int = 20e6
 
 
 class DAPError(Exception):
     pass
 
 
-class DAPObject(object):
+class DAPObject:
     """A generic DAP object class.
     """
     def __init__(self, name='', parent=None, *args, **kwargs):
@@ -255,7 +262,7 @@ class Float64(DAPAtom):
 
 
 class String(DAPAtom):
-    dtype = np.str
+    dtype = np.str_
     str = 'S'
 
     def dods_data(self, constraint=''):
@@ -264,7 +271,7 @@ class String(DAPAtom):
 
 
 class URL(String):
-    dtype = np.str
+    dtype = np.str_
     str = 'S'
 
 
@@ -479,25 +486,18 @@ def dods_encode(data, dtype):
     if not is_scalar:
         packed_length = length.astype('<i4').byteswap().tobytes() * 2
 
-
     yield packed_length
 
-
     if isinstance(data, da.Array):
-        for x in range(0, data.shape[0], data.chunks[0][0]):
-            yield np.array(data[x:x + data.chunks[0][0],
-                                ...]).astype(dtype.str).tobytes()
+        # Encode in chunks of a defined size if we work with dask.Array
+        chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE / data.dtype.itemsize)
+        serialize_data = data.ravel().rechunk(chunk_size)
+        for block in serialize_data.blocks:
+            yield block.astype(dtype.str).compute().tobytes()
     else:
+        # Make sure we always encode an array or we will get wrong results
+        data = np.asarray(data)
         yield data.astype(dtype.str).tobytes()
-        #yield data.astype(dtype.str).byteswap().tobytes()
-
-    ######
-    #import pudb; pudb.set_trace()
-    #if isinstance(data, dask.array.Array):
-    #    return packed_length + data.map_blocks(np.ndarray.tobytes, dtype=dtype.str)
-    #else:
-    #    packed_data = data.astype(dtype.str).tobytes()
-    #    return packed_length + packed_data
 
 
 def parse_slice_constraint(constraint):
@@ -552,3 +552,12 @@ def meets_constraint(constraint_expr, data_path):
             return True
 
     return False
+
+
+def set_dask_encoding_chunk_size(chunk_size: int):
+    """Set the maximum chunk size used to encode ``dask.Array``s to XDR.
+
+    :param chunk_size: (int) Encoding chunk size in Bytes
+    :returns: None
+    """
+    Config.DASK_ENCODE_CHUNK_SIZE = chunk_size
