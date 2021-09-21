@@ -232,7 +232,8 @@ def test_complete_dap_response(x, y, z):
                          test_arrays,
                          ids=['numpy.array', 'dask.array'])
 def test_sliced_dap_response(x, y, z):
-    """Test if slicing of a DAP dataset works as expected, including a 
+    """Test if slicing of a DAP dataset works as expected by slicing a single 
+    value from the test array.
     """
     expected_das = 'Attributes {\n'\
                    '    z {\n'\
@@ -294,6 +295,11 @@ def test_set_dask_encoding_chunk_size():
     # Restore the default value
     reload(opendap_protocol.protocol)
     assert opendap_protocol.protocol.Config.DASK_ENCODE_CHUNK_SIZE == 20e6
+
+    invalid_values = [ 0, -10, [], 'cloud', '', {}, ]
+    for val in invalid_values:
+        with pytest.raises((TypeError, ValueError)):
+            set_dask_encoding_chunk_size(val)
 
 
 def pack_xdr_float(data):
