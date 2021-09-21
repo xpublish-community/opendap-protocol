@@ -560,4 +560,8 @@ def set_dask_encoding_chunk_size(chunk_size: int):
     :param chunk_size: (int) Encoding chunk size in Bytes
     :returns: None
     """
-    Config.DASK_ENCODE_CHUNK_SIZE = chunk_size
+    chunk_size = int(chunk_size)
+    if chunk_size > 0: 
+        Config.DASK_ENCODE_CHUNK_SIZE = chunk_size
+    else:
+        raise ValueError('Encoding chunk size needs to be greather than 0.')
