@@ -75,43 +75,43 @@ class DAPObject:
 
         self._parse_args(args, kwargs)
 
-    def dds(self, constraint=''):
+    async def dds(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield self.ddshead()
             for obj in self.children:
                 obj.parent = self
-                for stmt in obj.dds(constraint=constraint):
+                async for stmt in obj.dds(constraint=constraint):
                     yield stmt
             yield self.ddstail()
         return
 
-    def das(self, constraint=''):
+    async def das(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield self.dashead()
             for obj in self.children:
                 obj.parent = self
-                for stmt in obj.das(constraint=constraint):
+                async for stmt in obj.das(constraint=constraint):
                     yield stmt
             yield self.dastail()
         return
 
-    def dods(self, constraint=''):
+    async def dods(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            for stmt in self.dds(constraint=constraint):
+            async for stmt in self.dds(constraint=constraint):
                 yield stmt.encode()
 
         yield b'\n'
 
         if meets_constraint(constraint, self.data_path):
-            for stmt in self.dods_data(constraint=constraint):
+            async for stmt in self.dods_data(constraint=constraint):
                 yield stmt
         return
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
 
         if meets_constraint(constraint, self.data_path):
             for obj in self.children:
-                for stmt in obj.dods_data(constraint=constraint):
+                async for stmt in obj.dods_data(constraint=constraint):
                     yield stmt
         return
 
@@ -207,7 +207,7 @@ class DAPAtom(DAPObject):
                 if subclass.dtype == nptype:
                     return subclass
 
-    def das(self, constraint=''):
+    async def das(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield self.dashead()
             for obj in self.children:
@@ -215,15 +215,16 @@ class DAPAtom(DAPObject):
                     yield stmt
             yield self.dastail()
 
-    def dds(self, constraint=''):
+    async def dds(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield '{indent}{dtype} {name};\n'.format(indent=self.indent,
                                                      dtype=self.__str__(),
                                                      name=self.name)
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield from dods_encode(self._val, self)
+            async for v in dods_encode(self._val, self):
+                yield v
 
 
 class Byte(DAPAtom):
@@ -265,9 +266,10 @@ class String(DAPAtom):
     dtype = np.str_
     str = 'S'
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
-            yield from dods_encode(self._val.encode('ascii'), self)
+            async for v in dods_encode(self._val.encode('ascii'), self):
+                yield v
 
 
 class URL(String):
@@ -284,12 +286,12 @@ class Structure(DAPObject):
 class Dataset(Structure):
     """Class representing a DAP dataset.
     """
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
 
         yield b'Data:\r\n'
 
         for obj in self.children:
-            for stmt in obj.dods_data(constraint=constraint):
+            async for stmt in obj.dods_data(constraint=constraint):
                 yield stmt
 
 
@@ -317,7 +319,7 @@ class Sequence(DAPObject):
         schema.parent = self
         self.schema = schema
 
-    def das(self, constraint=''):
+    async def das(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield self.dashead()
             for item in self.schema.children:
@@ -326,7 +328,7 @@ class Sequence(DAPObject):
                     yield stmt
             yield self.dastail()
 
-    def dds(self, constraint=''):
+    async def dds(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             yield self.ddshead()
             for item in self.schema.children:
@@ -335,11 +337,11 @@ class Sequence(DAPObject):
                     yield stmt
             yield self.ddstail()
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             for obj in self.children:
                 yield self.start_of_inst
-                for stmt in obj.dods_data(constraint=constraint):
+                async for stmt in obj.dods_data(constraint=constraint):
                     yield stmt
             yield self.end_of_seq
         return
@@ -360,9 +362,9 @@ class SequenceInstance(DAPObject):
         # TODO: Implement validataion
         return True
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
         for obj in self.children:
-            for stmt in obj.dods_data(constraint=constraint):
+            async for stmt in obj.dods_data(constraint=constraint):
                 yield stmt
         return
 
@@ -380,7 +382,8 @@ class DAPDataObject(DAPObject):
     def _parse_args(self, args, kwargs):
 
         self.data = kwargs.get('data', None)
-
+        self.dask_client = kwargs.get('dask_client', None)
+        
         if 'dtype' in kwargs:
             self.dtype = kwargs['dtype']
         else:
@@ -394,19 +397,21 @@ class DAPDataObject(DAPObject):
         else:
             self.dimensions = None
 
-    def dods_data(self, constraint=''):
+    async def dods_data(self, constraint=''):
 
         if meets_constraint(constraint, self.data_path):
             slices = parse_slice_constraint(constraint)
-            yield from dods_encode(self.data[slices], self.dtype)
+            async for v in dods_encode(self.data[slices], self.dtype, dask_client=self.dask_client):
+                yield v
             if self.dimensions is not None:
                 for i, dim in enumerate(self.dimensions):
                     sl = slices[i] if i < len(slices) else ...
-                    yield from dods_encode(dim.data[sl], dim.dtype)
+                    async for v in dods_encode(dim.data[sl], dim.dtype, dask_client=self.dask_client):
+                        yield v
 
 
 class Grid(DAPDataObject):
-    def dds(self, constraint=''):
+    async def dds(self, constraint=''):
         if meets_constraint(constraint, self.data_path):
             slices = parse_slice_constraint(constraint)
             yield self.ddshead()
@@ -425,14 +430,14 @@ class Grid(DAPDataObject):
                 orig_parent = dim.parent
                 dim.parent = self
                 sl = slices[i] if i < len(slices) else ...
-                for stmt in dim.dds(constraint='', slicing=sl):
+                async for stmt in dim.dds(constraint='', slicing=sl):
                     yield stmt
                 dim.parent = orig_parent
             yield self.ddstail()
 
 
 class Array(DAPDataObject):
-    def dds(self, constraint='', slicing=None):
+    async def dds(self, constraint='', slicing=None):
         if meets_constraint(constraint, self.data_path):
             # Check for slice
             if slicing is None:
@@ -453,7 +458,7 @@ class Attribute(DAPObject):
         self.dtype = dtype
         super(Attribute, self).__init__(name=name)
 
-    def das(self, constraint=''):
+    async def das(self, constraint=''):
         if self.dtype == String:
             d = '"'
         else:
@@ -466,11 +471,11 @@ class Attribute(DAPObject):
                     value=self.value,
                     d=d)
 
-    def dds(self, *args, **kwargs):
+    async def dds(self, *args, **kwargs):
         yield ''
 
 
-def dods_encode(data, dtype):
+async def dods_encode(data, dtype, dask_client=None):
     """This is the fast XDR conversion. A 100x100 array takes around 40 micro-
     seconds. This is a speedup of factor 100.
     """
@@ -492,8 +497,12 @@ def dods_encode(data, dtype):
         # Encode in chunks of a defined size if we work with dask.Array
         chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE / data.dtype.itemsize)
         serialize_data = data.ravel().rechunk(chunk_size)
-        for block in serialize_data.blocks:
-            yield block.astype(dtype.str).compute().tobytes()
+        if dask_client is None:
+            for block in serialize_data.blocks:
+                yield block.astype(dtype.str).compute().tobytes()
+        else:
+            for block in serialize_data.blocks:
+                yield (await dask_client.compute(block.astype(dtype.str))).tobytes()
     else:
         # Make sure we always encode an array or we will get wrong results
         data = np.asarray(data)
