@@ -381,6 +381,8 @@ class DAPDataObject(DAPObject):
 
         self.data = kwargs.get('data', None)
 
+        self.dask_client = kwargs.get('dask_client', None)
+
         if 'dtype' in kwargs:
             self.dtype = kwargs['dtype']
         else:
@@ -395,14 +397,14 @@ class DAPDataObject(DAPObject):
             self.dimensions = None
 
     def dods_data(self, constraint=''):
-
+       
         if meets_constraint(constraint, self.data_path):
             slices = parse_slice_constraint(constraint)
-            yield from dods_encode(self.data[slices], self.dtype)
+            yield from dods_encode(self.data[slices], self.dtype, dask_client=self.dask_client)
             if self.dimensions is not None:
                 for i, dim in enumerate(self.dimensions):
                     sl = slices[i] if i < len(slices) else ...
-                    yield from dods_encode(dim.data[sl], dim.dtype)
+                    yield from dods_encode(dim.data[sl], dim.dtype, dask_client=self.dask_client)
 
 
 class Grid(DAPDataObject):
@@ -470,7 +472,7 @@ class Attribute(DAPObject):
         yield ''
 
 
-def dods_encode(data, dtype):
+def dods_encode(data, dtype, dask_client=None):
     """This is the fast XDR conversion. A 100x100 array takes around 40 micro-
     seconds. This is a speedup of factor 100.
     """
@@ -490,10 +492,24 @@ def dods_encode(data, dtype):
 
     if isinstance(data, da.Array):
         # Encode in chunks of a defined size if we work with dask.Array
-        chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE / data.dtype.itemsize)
+        chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE*2 / data.dtype.itemsize)
         serialize_data = data.ravel().rechunk(chunk_size)
-        for block in serialize_data.blocks:
-            yield block.astype(dtype.str).compute().tobytes()
+        if dask_client is None:
+            for block in serialize_data.blocks:
+                yield block.astype(dtype.str).compute().tobytes()
+        else:
+            ## Compute block by block
+            # res = dask_client.compute([b.astype(dtype.str) for b in serialize_data.blocks], sync=True)
+            # for block in res:
+            #     yield block.tobytes()
+
+            # Compute in parallel
+            # Get list of futures 
+            result_fut = dask_client.compute([block.astype(dtype.str) for block in serialize_data.blocks])
+            
+            # Get results from futures
+            for block in result_fut:
+                yield dask_client.gather(block).tobytes()
     else:
         # Make sure we always encode an array or we will get wrong results
         data = np.asarray(data)

@@ -33,7 +33,8 @@ from setuptools import setup, find_packages
 
 requirements = [
     'numpy',
-    'dask',
+    'dask==2021.12.0',
+    'distributed==2021.12.0',
     'toolz',
 ]
 setup_requirements = [
