@@ -42,6 +42,7 @@ clients using the netCDF4 library. PyDAP client libraries are not supported.
 
 import re
 from dataclasses import dataclass
+from dask.cache import Cache
 
 import dask.array as da
 import numpy as np
@@ -53,6 +54,13 @@ SLICE_CONSTRAINT_RE = r'\[([\d,\W]+)\]$'
 @dataclass
 class Config:
     DASK_ENCODE_CHUNK_SIZE: int = 20e6
+    DASK_CACHE_SIZE: int = 120 * 1024 * 1024  # 120MB
+
+# we load one `DASK_ENCODE_CHUNK_SIZE`-sized block of linearized data
+# in to memory at one go. This may overlap with multiple dask chunks
+# so lets cache those chunks since we might come back to them.
+cache = Cache(Config.DASK_CACHE_SIZE)
+cache.register()
 
 
 class DAPError(Exception):
@@ -491,8 +499,9 @@ def dods_encode(data, dtype):
     if isinstance(data, da.Array):
         # Encode in chunks of a defined size if we work with dask.Array
         chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE / data.dtype.itemsize)
-        serialize_data = data.ravel().rechunk(chunk_size)
-        for block in serialize_data.blocks:
+        flat = data.ravel()
+        for start in range(0, data.size, chunk_size):
+            block = flat[slice(start, chunk_size)]
             yield block.astype(dtype.str).compute().tobytes()
     else:
         # Make sure we always encode an array or we will get wrong results
