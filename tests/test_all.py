@@ -32,6 +32,7 @@ from functools import reduce
 import dask.array as da
 import numpy as np
 import opendap_protocol as dap
+import xarray as xr
 import pytest
 from opendap_protocol.protocol import dods_encode
 
@@ -68,9 +69,13 @@ def test_dods_encode():
     data_vals = da.from_array(np_data,
                               chunks=(14, y_dim, 1, vertical_dim, 1, 1))
 
+    variable = xr.Variable(dims=("x", "y", "time", "vertical", "real", "ref_time"),
+                           data=np_data)
+
     x = dap.dods_encode(data_vals, dap.Int32)
     y = dap.dods_encode(np_data, dap.Int32)
-    assert b''.join(x) == b''.join(y)
+    z = dap.dods_encode(variable, dap.Int32)
+    assert b''.join(x) == b''.join(y) == b''.join(z)
 
     int_arrdata = np.arange(0, 20, 2, dtype='<i4')
     assert b''.join(dods_encode(int_arrdata,
@@ -290,11 +295,11 @@ def test_set_dask_encoding_chunk_size():
     from opendap_protocol.protocol import set_dask_encoding_chunk_size
     set_dask_encoding_chunk_size(chunk_size)
 
-    assert opendap_protocol.protocol.Config.DASK_ENCODE_CHUNK_SIZE == chunk_size
+    assert opendap_protocol.protocol.Config.STREAMING_BLOCK_SIZE == chunk_size
 
     # Restore the default value
     reload(opendap_protocol.protocol)
-    assert opendap_protocol.protocol.Config.DASK_ENCODE_CHUNK_SIZE == 20e6
+    assert opendap_protocol.protocol.Config.STREAMING_BLOCK_SIZE == 20e6
 
     invalid_values = [ 0, -10, [], 'cloud', '', {}, ]
     for val in invalid_values:

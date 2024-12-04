@@ -43,6 +43,7 @@ setup_requirements = [
 
 test_requirements = [
     'pytest',
+    'xarray',
 ]
 
 extras = {

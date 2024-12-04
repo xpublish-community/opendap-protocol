@@ -40,6 +40,7 @@ This library only implements the server side encoding. It is tested to serve
 clients using the netCDF4 library. PyDAP client libraries are not supported.
 """
 
+import importlib
 import re
 from dataclasses import dataclass
 from dask.cache import Cache
@@ -47,20 +48,18 @@ from dask.cache import Cache
 import dask.array as da
 import numpy as np
 
+has_xarray = bool(importlib.util.find_spec("xarray"))
+
+if has_xarray:
+    from xarray import Variable
+
 INDENT = '    '
 SLICE_CONSTRAINT_RE = r'\[([\d,\W]+)\]$'
 
 
 @dataclass
 class Config:
-    DASK_ENCODE_CHUNK_SIZE: int = 20e6
-    DASK_CACHE_SIZE: int = 120 * 1024 * 1024  # 120MB
-
-# we load one `DASK_ENCODE_CHUNK_SIZE`-sized block of linearized data
-# in to memory at one go. This may overlap with multiple dask chunks
-# so lets cache those chunks since we might come back to them.
-cache = Cache(Config.DASK_CACHE_SIZE)
-cache.register()
+    STREAMING_BLOCK_SIZE: int = 20e6
 
 
 class DAPError(Exception):
@@ -496,17 +495,21 @@ def dods_encode(data, dtype):
 
     yield packed_length
 
+    chunk_size = int(Config.STREAMING_BLOCK_SIZE / data.dtype.itemsize)
     if isinstance(data, da.Array):
-        # Encode in chunks of a defined size if we work with dask.Array
-        chunk_size = int(Config.DASK_ENCODE_CHUNK_SIZE / data.dtype.itemsize)
-        flat = data.ravel()
-        for start in range(0, data.size, chunk_size):
-            block = flat[slice(start, chunk_size)]
-            yield block.astype(dtype.str).compute().tobytes()
-    else:
-        # Make sure we always encode an array or we will get wrong results
-        data = np.asarray(data)
-        yield data.astype(dtype.str).tobytes()
+        data = data.ravel()
+
+    for start in range(0, data.size, chunk_size):
+        end = start + chunk_size
+        if isinstance(data, da.Array):
+            block = data[slice(start, end)].compute()
+        elif has_xarray and isinstance(data, Variable):
+            npidxr = np.unravel_index(np.arange(start, min(end, data.size)), shape=data.shape)
+            xridxr = tuple(Variable(dims="__points__", data=idxr) for idxr in npidxr)
+            block = data[xridxr].to_numpy()
+        else:
+            block = np.asarray(data).ravel()[slice(start, end)]
+        yield block.astype(dtype.str).tobytes()
 
 
 def parse_slice_constraint(constraint):
@@ -571,6 +574,6 @@ def set_dask_encoding_chunk_size(chunk_size: int):
     """
     chunk_size = int(chunk_size)
     if chunk_size > 0: 
-        Config.DASK_ENCODE_CHUNK_SIZE = chunk_size
+        Config.STREAMING_BLOCK_SIZE = chunk_size
     else:
         raise ValueError('Encoding chunk size needs to be greather than 0.')
